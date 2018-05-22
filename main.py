@@ -85,6 +85,13 @@ def get_image_first(name,year, month):
         try:
             browser.find_elements_by_xpath("//div[@class='box-toolbar']/a")[6].click()
         except:
+            try:
+                tt = browser.find_element_by_xpath('/html/body/div[3]/div[1]/a')
+                if tt:
+                    return -1
+            except:
+                pass
+            # tt = browser.find_element_by_xpath('/')
             time.sleep(1)
         t = browser.find_elements_by_xpath("//span[@class='selectA yearA']")
     browser.find_elements_by_xpath("//span[@class='selectA yearA']")[0].click()
@@ -98,34 +105,39 @@ def get_image_first(name,year, month):
     browser.find_elements_by_xpath("//span[@class='selectA monthA']")[1].click()
     browser.find_element_by_xpath("//span[@class='selectA monthA slided']//ul//li//a[@href='#" + month + "']").click()
 
-
     browser.find_element_by_xpath("//input[@value='确定']").click()
 
     # 截取指数的图片
     browser.execute_script("""
-                (function () {
-                    var y = 100;
-                    var step = 100;
-                    window.scroll(0, 0);
+                    (function () {
+                        var y = 100;
+                        var step = 100;
+                        window.scroll(0, 0);
 
-                    function f() {
-                        window.scroll(0, y);
-                        document.title += "scroll-done";
-                    }
+                        function f() {
+                            window.scroll(0, y);
+                            document.title += "scroll-done";
+                        }
 
-                    setTimeout(f, 1000);
-                })();
-            """)
+                        setTimeout(f, 1000);
+                    })();
+                """)
     for i in range(30):
         if "scroll-done" in browser.title:
             break
-        time.sleep(10)
-
-    time.sleep(2)
+        time.sleep(2)
+    # time.sleep(2)
+    try:
+        t = browser.find_elements_by_xpath('//*[@id="trend"]/div/p')
+        if t:
+            return 1
+    except:
+        pass
     browser.save_screenshot("test.png")
+    return 0
 
 
-
+# 返回 1 重做
 def get_image(name,year, month):
     year = str(year)
     if month < 10:
@@ -136,8 +148,11 @@ def get_image(name,year, month):
     t = []
     valid = 0
     while not t:
-        browser.find_elements_by_xpath("//div[@class='box-toolbar']/a")[6].click()
-        t = browser.find_elements_by_xpath("//span[@class='selectA monthA']")
+        try:
+            browser.find_elements_by_xpath("//div[@class='box-toolbar']/a")[6].click()
+            t = browser.find_elements_by_xpath("//span[@class='selectA monthA']")
+        except:
+            time.sleep(1)
 
     while not valid:
         try:
@@ -158,7 +173,16 @@ def get_image(name,year, month):
             print(e)
             time.sleep(2)
     time.sleep(2)
+
+    try:
+        t = browser.find_elements_by_xpath('//*[@id="trend"]/div/p')
+        if t:
+            return 1
+    except:
+        pass
+
     browser.save_screenshot("test.png")
+    return 0
 
 
 
@@ -180,6 +204,9 @@ def get_axis():
         print(imname)
         im_t.save(imname)
         r,g,b = im_t.split()
+        w,h = b.size
+        b = b.resize((2*w,2*h))
+        b.save('axis_b'+str(i+1)+'.png')
         code = pytesseract.image_to_string(b)
         code_true = code.replace(',','')
         print(code_true)
@@ -248,66 +275,112 @@ def get_value(year, month, from_day ,to_day, max_index, min_index):
         i += 1
 
 def get_all_value(name, from_time, end_time):
+    global sort_times
+    sort_times = list()
     from_year, from_month, from_day = map(int, from_time.split('-'))
     end_year, end_month, end_day = map(int, end_time.split('-'))
     i_year = from_year
     i_month = from_month
 
     while i_year <= end_year:
-        if i_year == from_year:
-            if from_year == end_year:
-                t_end_month = end_month
-            else:
-                t_end_month = 12
-            if from_year == end_year and from_month == end_month:
-                get_image_first(name, i_year, i_month)
-                max_index, min_index = get_axis()
-                get_value(i_year, i_month, from_day, end_day, max_index, min_index)
-                print(i_year, i_month, from_day, end_day)
-            else:
-                while i_month <= t_end_month:
-                    if i_month != from_month:
-                        get_image(name, i_year, i_month)
-                        max_index, min_index = get_axis()
-                        get_value(i_year, i_month, 1, month_dict(i_year, i_month), max_index, min_index)
-                        print(i_year, i_month, 1, month_dict(i_year, i_month))
-                    else:
-                        get_image_first(name, i_year, i_month)
-                        max_index, min_index = get_axis()
-                        get_value(i_year, i_month, from_day, month_dict(i_year, i_month), max_index, min_index)
-                        print(i_year, i_month, from_day, month_dict(i_year, i_month))
-                    i_month += 1
-        elif i_year == end_year:
+        if i_year == from_year and i_year == end_year:
             while i_month <= end_month:
-                if i_month != end_month:
-                    get_image(name, i_year, i_month)
+                if i_month == from_month and i_month == end_month:
+                    back = 1
+                    while back != 0:
+                        if back == -1:
+                            return list()
+                        back = get_image_first(name, i_year, i_month)
+
+                    max_index, min_index = get_axis()
+                    get_value(i_year, i_month, from_day, end_day, max_index, min_index)
+                    print(i_year, i_month, from_day, end_day)
+                elif i_month == from_month:
+                    back = 1
+                    while back != 0:
+                        if back == -1:
+                            return list()
+                        back = get_image_first(name, i_year, i_month)
+
+                    max_index, min_index = get_axis()
+                    get_value(i_year, i_month, from_day, month_dict(i_year, i_month), max_index, min_index)
+                    print(i_year, i_month, from_day, month_dict(i_year, i_month))
+                elif i_month == end_month:
+                    back = 1
+                    while back != 0:
+                        back = get_image(name, i_year, i_month)
+
+                    max_index, min_index = get_axis()
+                    get_value(i_year, i_month, 1, end_day, max_index, min_index)
+                    print(i_year, i_month, 1, end_day)
+                else:
+                    back = 1
+                    while back != 0:
+                        back = get_image(name, i_year, i_month)
+
+                    max_index, min_index = get_axis()
+                    get_value(i_year, i_month, 1, month_dict(i_year, i_month), max_index, min_index)
+                    print(i_year, i_month, 1, month_dict(i_year, i_month))
+                i_month += 1
+        elif i_year == from_year:
+            while i_month <= 12:
+                if i_month != from_month:
+                    back = 1
+                    while back != 0:
+                        back = get_image(name, i_year, i_month)
+
                     max_index, min_index = get_axis()
                     get_value(i_year, i_month, 1, month_dict(i_year, i_month), max_index, min_index)
                     print(i_year, i_month, 1, month_dict(i_year, i_month))
                 else:
-                    get_image(name, i_year, i_month)
+                    back = 1
+                    while back != 0:
+                        if back == -1:
+                            return list()
+                        back = get_image_first(name, i_year, i_month)
+
+                    max_index, min_index = get_axis()
+                    get_value(i_year, i_month, from_day, month_dict(i_year, i_month), max_index, min_index)
+                    print(i_year, i_month, from_day, month_dict(i_year, i_month))
+                i_month += 1
+        elif i_year == end_year:
+            while i_month <= end_month:
+                if i_month != end_month:
+                    back = 1
+                    while back != 0:
+                        back = get_image(name, i_year, i_month)
+
+                    max_index, min_index = get_axis()
+                    get_value(i_year, i_month, 1, month_dict(i_year, i_month), max_index, min_index)
+                    print(i_year, i_month, 1, month_dict(i_year, i_month))
+                else:
+                    back = 1
+                    while back != 0:
+                        back = get_image(name, i_year, i_month)
+
                     max_index, min_index = get_axis()
                     get_value(i_year, i_month, 1, end_day, max_index, min_index)
                     print(i_year, i_month, 1, end_day)
                 i_month += 1
-
         else:
             while i_month <= 12:
-                get_image(name, i_year, i_month)
+                back = 1
+                while back != 0:
+                    back = get_image(name, i_year, i_month)
+
                 max_index, min_index = get_axis()
                 get_value(i_year, i_month, 1, month_dict(i_year, i_month), max_index, min_index)
                 print(i_year, i_month, 1, month_dict(i_year, i_month))
                 i_month += 1
         i_year += 1
         i_month = 1
+    return sort_times
 
 if __name__ == '__main__':
-    global sort_times
-    sort_times = list()
-
     openbrowser()
     key_word = 'XXX'
-    from_time = '2012-1-1'
-    end_time = '2018-4-30'
-    get_all_value(key_word, from_time, end_time)
-    print(sort_times)
+    from_time = '2012-01-01'
+    end_time = '2018-04-30'
+    index = get_all_value(key_word, from_time, end_time)
+    print(index)
+    #get_axis()
